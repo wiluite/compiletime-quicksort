@@ -1,4 +1,4 @@
-# Compile-time MergeSort
+# Compile-time QuickSort
 
 Модуль реализации.
 
