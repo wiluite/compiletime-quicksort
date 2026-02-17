@@ -47,3 +47,7 @@ struct ConcatT<std::index_sequence<Ts...>, std::index_sequence<Us...>> {
     using type = std::index_sequence<Ts..., Us...>;
 }; 
 
+template <std::size_t... Ts>
+struct ClearSequenceT<std::index_sequence<Ts...> > {
+    using type = std::index_sequence<>;
+};

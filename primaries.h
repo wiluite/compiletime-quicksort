@@ -47,3 +47,7 @@ struct ConcatT;
 template <class L1, class L2>
 using Concat = typename ConcatT<L1, L2>::type;
 
+template <class S>
+struct ClearSequenceT;
+template <class S>
+using ClearSequence = typename ClearSequenceT<S>::type ;

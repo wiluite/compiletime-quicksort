@@ -47,3 +47,8 @@ template <class... Elems1, class... Elems2>
 struct ConcatT<List<Elems1...>, List<Elems2...>> {
     using type = List<Elems1..., Elems2...>;
 }; 
+
+template <class ... Ts>
+struct ClearSequenceT<List<Ts...>> {
+    using type = List<>;
+};

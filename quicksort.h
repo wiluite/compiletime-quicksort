@@ -3,30 +3,40 @@
 #include "primaries.h"
 #include <type_traits>
 
-// Не совсем partition, а вычленение либо левого, либо правого подсписка от L по опорному P
-// в зависимости от условия Cmp
-template <class L, class P, template <class, class> class Cmp, bool = IsEmpty<L>::value>
-struct PartitionByCompareT;
-
-// Шаблон псевдонима
-template <class L, class P, template <class, class> class Cmp>
-using PartitionByCompare = typename PartitionByCompareT<L, P, Cmp>::type;
-
-// Рекурсивный случай
-template <class L, class P, template <class, class> class Cmp>
-struct PartitionByCompareT<L, P, Cmp, false> 
-    : std::conditional<
-                        Cmp<Front<L>, P>::value,
-                        PushFront<PartitionByCompare<PopFront<L>, P, Cmp>, Front<L> >,
-                        PartitionByCompare<PopFront<L>, P, Cmp>
-                      > {};
-
-// Базовый случай
-template <class L, class P, template <class, class> class Cmp>
-struct PartitionByCompareT<L, P, Cmp, true> {
-    using type = L;
+// Тип результата разделения вокруг порога
+template <class L, class R>
+struct PartitionResult {
+    using left = L;
+    using right = R;
 };
 
+// Алгоритм Разделения
+
+// Первичный шаблон
+template<template <class> class Cmp, class L, class Result, bool=IsEmpty<L>::value>
+struct PartitionT;
+// Шаблон псевдонима
+template<template <class> class Cmp, class L, class Result = PartitionResult<ClearSequence<L>, ClearSequence<L> > >
+using Partition = typename PartitionT<Cmp, L, Result>::type;
+
+// Рекурсивный случай
+template<template <class> class Cmp, class L, class Result>
+struct PartitionT<Cmp, L, Result, false> : 
+           PartitionT<
+               Cmp, 
+               PopFront<L>,
+               std::conditional_t<
+                   Cmp<Front<L> >::value,
+                   PartitionResult< PushBack<typename Result::left, Front<L> >, typename Result::right>,
+                   PartitionResult< typename Result::left, PushBack<typename Result::right, Front<L> > >
+               >
+           >{};
+
+// Базовый случай
+template<template <class> class Cmp, class L, class Result>
+struct PartitionT<Cmp,L,Result, true> {
+    using type = Result;
+};
 
 // Реализация главного алгоритма сортировки QuickSort
 
@@ -37,20 +47,22 @@ struct QuickSortT;
 template <class L>
 using QuickSort = typename QuickSortT<L>::type;
 
-// Объявления CT-предикатов
-template <class T, class U>
-struct CMP_LESS_EQUAL;
-template <class T, class U>
-struct CMP_MORE;
+// Объявление CT-предиката, захватывающего порог и участвующего в разделении вокруг него левой и правой половин
+template <class T>
+struct CMP_LESS_EQUAL_CT {
+    template <class U>
+    struct apply;
+};
 
 // Рекурсивный случай
 template <class L>
 struct QuickSortT<L, false> {
     using Piv = Front<L>;
     using LNoPiv = PopFront<L>;
+    using partition_result = Partition<CMP_LESS_EQUAL_CT<Piv>::template apply, LNoPiv>;
     using type = Concat<
-                     PushBack<QuickSort<PartitionByCompare<LNoPiv, Piv, CMP_LESS_EQUAL>>, Piv>,
-                     QuickSort<PartitionByCompare<LNoPiv, Piv, CMP_MORE>> 
+                     PushBack<QuickSort<typename partition_result::left>, Piv>,
+                     QuickSort<typename partition_result::right> 
                  >;
 };
 

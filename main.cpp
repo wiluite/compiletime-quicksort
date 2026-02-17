@@ -5,51 +5,38 @@
 
 using namespace std;
 
-// Compile-time предикаты сравнения элементов
-template <class T, class U>
-struct CMP_LESS_EQUAL {
-    static constexpr bool value = sizeof(T) <= sizeof(U); 
+// Определения и специализации CT-предиката, захватывающего порог и участвующего в разделении вокруг него левой и правой половин
+template <class T>
+template <class U>
+struct CMP_LESS_EQUAL_CT<T>::apply {
+    static constexpr bool value = sizeof(U) <= sizeof(T);
 };
-template <size_t T, size_t U>
-struct CMP_LESS_EQUAL<integral_constant<size_t, T>, integral_constant<size_t, U>> {
-    static constexpr bool value = T <= U; 
-};
-template <class T, class U>
-struct CMP_MORE {
-    static constexpr bool value = sizeof(T) > sizeof(U); 
-};
-template <size_t T, size_t U>
-struct CMP_MORE<integral_constant<size_t, T>, integral_constant<size_t, U>> {
-    static constexpr bool value = T > U; 
+template <class T>
+template <std::size_t M>
+struct CMP_LESS_EQUAL_CT<T>::apply<std::integral_constant<std::size_t, M> > {
+    constexpr static bool value = (M <= T::value);
 };
 
-// Проверка получения списков элементов меньших либо равных опорному, и больше опорного
-static_assert(std::is_same_v<PartitionByCompare<List<float, double, bool, short, double, std::string>, 
-                                                float, 
-                                                CMP_LESS_EQUAL>,
+// Проверка алгоритма разделения
 
-                                                List<float, bool, short> >);
-
-static_assert(std::is_same_v<PartitionByCompare<index_sequence<3, 4, 1, 2, 4, 5>, 
-                                                integral_constant<size_t, 3>, 
-                                                CMP_LESS_EQUAL>,
-
-                                                index_sequence<3, 1, 2> >);
+using partition_result_for_types = Partition<
+                                       CMP_LESS_EQUAL_CT<float>::template apply, 
+                                       List<float, double, bool, short, double, string> 
+                                   >;
+static_assert(std::is_same_v<typename partition_result_for_types::left, List<float, bool, short>>);
+static_assert(std::is_same_v<typename partition_result_for_types::right, List<double, double, string>>);
 
 
-static_assert(std::is_same_v<PartitionByCompare<index_sequence<3, 4, 1, 2, 4, 5>, 
-                                                integral_constant<size_t, 3>,
-                                                CMP_MORE>,
+using partition_result_for_nums = Partition<
+                                      CMP_LESS_EQUAL_CT<integral_constant<size_t, 3>>::template apply, 
+                                      index_sequence<3, 4, 1, 2, 4, 5> 
+                                  >;
+static_assert(std::is_same_v<typename partition_result_for_nums::left, index_sequence<3, 1, 2>>);
+static_assert(std::is_same_v<typename partition_result_for_nums::right, index_sequence<4, 4, 5>>);
 
-                                                index_sequence<4, 4, 5> >);
-
-static_assert(std::is_same_v<PartitionByCompare<List<float, double, bool, short, double, std::string>, 
-                                                float, 
-                                                CMP_MORE>,
-
-                                                List<double, double, std::string> >);
 
 // Проверка алгоритма QuickSort.
+
 static_assert(std::is_same_v<QuickSort<List<>>, List<>>);
 static_assert(std::is_same_v<QuickSort<List<double>>,
                                        List<double>>);
